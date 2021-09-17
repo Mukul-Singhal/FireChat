@@ -18,11 +18,17 @@ import { NavLink, Route, Switch } from "react-router-dom";
 import SidebarList from "./SidebarList";
 
 import useRoom from "../hooks/useRooms";
+import useUsers from "../hooks/useUsers";
+import useChats from "../hooks/useChats";
 
 export default function Sidebar({ user, page }) {
   const [menu, setMenu] = useState(1);
+  const [searchResults, setSearchResults] = useState([]);
 
   const rooms = useRoom();
+  const users = useUsers(user);
+  const chats = useChats(user);
+
   console.log(rooms);
 
   const signOut = () => {
@@ -39,6 +45,30 @@ export default function Sidebar({ user, page }) {
       });
     }
   };
+
+  async function searchUsersAndRooms(event) {
+    event.preventDefault();
+    const query = event.target.elements.search.value;
+    const userSnapshot = await db
+      .collection("users")
+      .where("name", "==", query)
+      .get();
+    const roomSnapshot = await db
+      .collection("rooms")
+      .where("name", "==", query)
+      .get();
+    const userResults = userSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    const roomResults = roomSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    const searchResults = [...userResults, ...roomResults];
+    setMenu(4);
+    setSearchResults(searchResults);
+  }
 
   let Nav;
 
@@ -79,7 +109,7 @@ export default function Sidebar({ user, page }) {
       </div>
       <div className="sidebar__search">
         <form
-          // onSubmit={searchUsersAndRooms}
+          onSubmit={searchUsersAndRooms}
           className="sidebar__search--container"
         >
           <SearchOutlined />
@@ -128,26 +158,26 @@ export default function Sidebar({ user, page }) {
       {page.isMobile ? (
         <Switch>
           <Route path="/chats">
-            <SidebarList title="Chats" data={[]} />
+            <SidebarList title="Chats" data={chats} />
           </Route>
           <Route path="/rooms">
             <SidebarList title="Rooms" data={rooms} />
           </Route>
           <Route path="/users">
-            <SidebarList title="Users" data={[]} />
+            <SidebarList title="Users" data={users} />
           </Route>
           <Route path="/search">
-            <SidebarList title="Search Results" data={[]} />
+            <SidebarList title="Search Results" data={searchResults} />
           </Route>
         </Switch>
       ) : menu === 1 ? (
-        <SidebarList title="Chats" data={[]} />
+        <SidebarList title="Chats" data={chats} />
       ) : menu === 2 ? (
         <SidebarList title="Rooms" data={rooms} />
       ) : menu === 3 ? (
-        <SidebarList title="Users" data={[]} />
+        <SidebarList title="Users" data={users} />
       ) : menu === 4 ? (
-        <SidebarList title="Search Results" data={[]} />
+        <SidebarList title="Search Results" data={searchResults} />
       ) : null}
       <div className="sidebar__chat--addRoom">
         <IconButton onClick={createRoom}>
